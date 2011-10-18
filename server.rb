@@ -16,6 +16,14 @@ require 'socket'
 #   [:arcount, 16],
 # ]
 
+def ip_to_32(str)
+  str.split('.').inject([]) { 
+    |shifted_parts, part| shifted_parts << (part.to_i << (24 - shifted_parts.length*8)) 
+  }.inject(0) { 
+    |bits, part| bits |= part
+  }
+end
+
 s = UDPSocket.new
 s.bind(nil, 2111)
 5.times do
@@ -91,7 +99,7 @@ s.bind(nil, 2111)
   answer_data << [1, 16, 'n'] # class
   answer_data << [512, 32, 'N'] # ttl
   answer_data << [4, 16, 'n'] # RDLENGTH is 4 cuz we are sending an IP
-  answer_data << [(127 << 24) | 1, 32, 'N'] # always respond 127.0.0.1
+  answer_data << [ip_to_32("127.0.0.1"), 32, 'N'] # always respond 127.0.0.1
   
   data = header_data + query_data + answer_data
   puts data.inspect
