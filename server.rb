@@ -21,7 +21,7 @@ require 'dns_response'
 
 s = UDPSocket.new
 s.bind(nil, 2111)
-5.times do
+while true do
   
   buffer, sender = s.recvfrom(1024)
   
