@@ -12,33 +12,15 @@ class DnsResponse
   end
   
   def aa=(value)
-    mask = 0b11111011
-    if value === false || value == 0
-      set = 0b00000000
-    else
-      set = 0b00000100
-    end
-    @flags1_set = (@flags1_set & mask) | set
+    @flags1_set = set_bit_of_byte(@flags1_set, 2, value)
   end
   
   def tc=(value)
-    mask = 0b11111101
-    if value === false || value == 0
-      set = 0b00000000
-    else
-      set = 0b00000010
-    end
-    @flags1_set = (@flags1_set & mask) | set
+    @flags1_set = set_bit_of_byte(@flags1_set, 1, value)
   end
   
   def ra=(value)
-    mask = 0b01111111
-    if value === false || value == 0
-      set = 0b00000000
-    else
-      set = 0b10000000
-    end
-    @flags1_set = (@flags1_set & mask) | set
+    @flags2_set = set_bit_of_byte(@flags2_set, 7, value)
   end
   
   def add_answer(id, type, aclass, ttl, data)
@@ -51,35 +33,6 @@ class DnsResponse
     else
       @answers << {:id => id, :type => type, :class => aclass, :ttl => ttl, :data => data}
     end
-  end
-  
-  def header_data
-
-    new_flags1 = (@dns_request.flags1 & @flags1_mask) | @flags1_set
-    new_flags2 = (@dns_request.flags2 & @flags2_mask) | @flags2_set
-
-    tmp = []
-    tmp << [@dns_request.qid, 16, 'n']
-    tmp << [new_flags1, 8, 'C']
-    tmp << [new_flags2, 8, 'C']
-    tmp << [@dns_request.qdcount, 16, 'n']
-    tmp << [@answers.length, 16, 'n'] # we now have 1 answer
-    tmp << [@dns_request.nscount, 16, 'n']
-    tmp << [@dns_request.arcount, 16, 'n']
-    tmp
-  end
-  
-  def answer_data
-    tmp = []
-    @answers.each do |a|
-      tmp << [0b1100000000001100, 16, 'n'] # pointer to the name record in the question section TODO - need to support other queries
-      tmp << [a[:type], 16, 'n']
-      tmp << [a[:class], 16, 'n']
-      tmp << [a[:ttl], 32, 'N']
-      tmp << [4, 16, 'n'] # RDLENGTH is 4 cuz we are sending an IP TODO - need to support other things
-      tmp << [a[:data], 32, 'N']
-    end
-    tmp
   end
   
   def to_bytes
@@ -99,12 +52,52 @@ class DnsResponse
   
   private
   
+    def header_data
+
+      new_flags1 = (@dns_request.flags1 & @flags1_mask) | @flags1_set
+      new_flags2 = (@dns_request.flags2 & @flags2_mask) | @flags2_set
+
+      tmp = []
+      tmp << [@dns_request.qid, 16, 'n']
+      tmp << [new_flags1, 8, 'C']
+      tmp << [new_flags2, 8, 'C']
+      tmp << [@dns_request.qdcount, 16, 'n']
+      tmp << [@answers.length, 16, 'n'] # we now have 1 answer
+      tmp << [@dns_request.nscount, 16, 'n']
+      tmp << [@dns_request.arcount, 16, 'n']
+      tmp
+    end
+
+    def answer_data
+      tmp = []
+      @answers.each do |a|
+        tmp << [0b1100000000001100, 16, 'n'] # pointer to the name record in the question section TODO - need to support other queries
+        tmp << [a[:type], 16, 'n']
+        tmp << [a[:class], 16, 'n']
+        tmp << [a[:ttl], 32, 'N']
+        tmp << [4, 16, 'n'] # RDLENGTH is 4 cuz we are sending an IP TODO - need to support other things
+        tmp << [a[:data], 32, 'N']
+      end
+      tmp
+    end
+  
     def ip_to_32(str)
       str.split('.').inject([]) { 
         |shifted_parts, part| shifted_parts << (part.to_i << (24 - shifted_parts.length*8)) 
       }.inject(0) { 
         |bits, part| bits |= part
       }
+    end
+    
+    def set_bit_of_byte(byte, bit_offset, value)
+      mask = (1 << bit_offset) ^ ((1 << 8) - 1)
+      if value === false || value == 0
+        set = 0
+      else
+        set = (1 << bit_offset)
+      end
+      byte = (byte & mask) | set
+      byte
     end
   
 end

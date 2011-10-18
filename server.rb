@@ -31,7 +31,7 @@ s.bind(nil, 2111)
   
   resp = DnsResponse.new(req)
   
-  resp.aa = true
+  resp.aa = false
   resp.ra = false
   resp.tc = false
   
