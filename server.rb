@@ -1,6 +1,5 @@
 require 'socket'
-require 'dns_request'
-require 'dns_response'
+require 'dns_message'
 
 # header_bitmap = [
 #   [:qid, 16],
@@ -25,18 +24,19 @@ while true do
   
   buffer, sender = s.recvfrom(1024)
   
-  req = DnsRequest.new(buffer)
+  message = DnsMessage.load(buffer)
   
-  puts req.queries.inspect
+  puts message.queries.inspect
   
-  resp = DnsResponse.new(req)
+  reply = message.dup
+  reply.response!
   
-  resp.aa = false
-  resp.ra = false
-  resp.tc = false
+  reply.aa = true
+  reply.ra = false
+  reply.tc = false
   
-  resp.add_answer(1, 1, 1, 512, "127.0.0.1")
+  reply.add_answer(1, 1, 1, 512, "127.0.0.1")
   
-  s.send(resp.to_bytes, 0, sender[3], sender[1])
+  s.send(reply.to_bytes, 0, sender[3], sender[1])
   
 end
